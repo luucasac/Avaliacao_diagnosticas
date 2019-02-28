@@ -9,10 +9,11 @@ library(readxl)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(stringr)
 
 # importando os dados xlsx
 
-r <- read_xlsx("../9F826100.xlsx", sheet = 1)
+r <- read_xlsx("9F826100.xlsx", sheet = 1)
 
 # selecionando apenas a colunas necessarias
 
@@ -58,13 +59,13 @@ rm(r)
 
 # convertendo o tipo das colunas
 
-r2$id_materia <- as.numeric(r2$r2$id_materia)
-r2$id_turma <- as.numeric(r2$r2$id_turma)
-r2$id_rede <- as.numeric(r2$r2$id_rede)
-r2$id_escola <- as.numeric(r2$r2$id_escola)
-r2$id_matricula <- as.numeric(r2$r2$id_matricula)
-r2$tipo <- as.numeric(r2$r2$tipo)
-r2$id_serie <- as.numeric(r2$r2$id_serie)
+r2$id_materia <- as.character(r2$id_materia)
+r2$id_turma <- as.character(r2$id_turma)
+r2$id_rede <- as.character(r2$id_rede)
+r2$id_escola <- as.character(r2$id_escola)
+r2$id_matricula <- as.character(r2$id_matricula)
+r2$tipo <- as.character(r2$tipo)
+r2$id_serie <- as.numeric(r2$id_serie)
 r2$Q1 <- as.numeric(r2$Q1)
 r2$Q2 <- as.numeric(r2$Q2)
 r2$Q3 <- as.numeric(r2$Q3)
@@ -100,17 +101,30 @@ r2$Q30 <- as.numeric(r2$Q30)
 
 r3 <- r2 %>% gather(questao, acerto, starts_with("Q"))
 
-rm(r2) 
+rm(r2)
 
 # consolidando os dados por escola
 
-acertos_por_questao <- r3 %>% 
-  group_by(id_escola, id_serie, id_materia, questao) %>% 
-  summarise(Acertos = mean(acerto)) %>% 
-  filter(!is.na(Acertos))
+acertos_por_questao <- r3 %>%
+  group_by(id_escola, id_serie, id_materia, questao) %>%
+  summarise(Acertos = mean(acerto)) %>%
+  mutate(questao_num = substr(questao, 2, 3)) %>%
+  filter(!is.na(Acertos)) %>% 
+  arrange(id_serie, questao_num)
+
+# grafico com acertos tct por serie e escola
+
+grafico_tct <- function(df) {
+  df %>% 
+    ggplot(aes(x = df$questao, y = df$Acertos)) +
+    geom_bar(stat = "identity") +
+    facet_wrap(id_serie ~ id_materia)
+}
+
+lista_escolas_serie <- split(acertos_por_questao, acertos_por_questao$id_escola)
+
+grafico_tct(lista_escolas_serie$`1`)
 
 
 
-acertos_por_questao %>% filter(id_escola == 1, id_serie == 9) %>% 
-  ggplot(aes(y = Acertos, x = questao, col = id_materia))+
-  geom_jitter()
+# lapply(lista_escolas_serie, grafico_tct)
